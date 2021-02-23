@@ -35,7 +35,7 @@ local/compute_am_score.sh --out_root am_res --out_name 22uer \
   --mono_train $train_name --valid $valid_name --max_stage 1 $new_dir/data $dir/data/lang
 
 
-# sanity check 1: shufft order. LL = -1184.9
+# sanity check 1: shuffle order. LL = -1184.9
 new_label_dir=/checkpoint/abaevski/asr/unsup/data/segmented/22_uer_transcriptions
 new_dir=./output/w2v_pca128_22uer_shuf
 
@@ -54,7 +54,7 @@ local/compute_am_score.sh --out_root am_res --out_name 22uer_shuf \
 
 # sanity check 2: drop words: LL = -1174.94
 new_label_dir=/checkpoint/abaevski/asr/unsup/data/segmented/22_uer_transcriptions
-new_dir=./output/w2v_pca128_22uer_subsamp2x
+new_dir=./output/w2v_pca128_22uer_subsamp3x
 
 for split in $train_name $valid_name; do
   mkdir -p $new_dir/data/$split
@@ -65,5 +65,23 @@ for split in $train_name $valid_name; do
 
   echo "WER on $split is" $(compute-wer ark:$dir/data/$split/text ark:$new_dir/data/$split/text | cut -d" " -f2-) 
 done
-local/compute_am_score.sh --out_root am_res --out_name 22uer_subsamp2x \
+local/compute_am_score.sh --out_root am_res --out_name 22uer_subsamp3x \
   --mono_train $train_name --valid $valid_name --max_stage 1 $new_dir/data $dir/data/lang
+
+
+# on-line part (pseudo transcript with 57% uer). LL = -1175.86
+new_label_dir=/checkpoint/wnhsu/experiments/unsup_asr/tmp_57_uer_transcriptions
+new_dir=./output/w2v_pca128_57uer
+
+for split in $train_name $valid_name; do
+  mkdir -p $new_dir/data/$split
+  cp $dir/data/$split/{feats.scp,cmvn.scp,utt2spk,spk2utt} $new_dir/data/$split
+  cut -d' ' -f1 $dir/data/$split/text > $new_dir/data/$split/uids
+  paste -d' ' $new_dir/data/$split/uids $new_label_dir/$split.$label > $new_dir/data/$split/text
+
+  echo "WER on $split is" $(compute-wer ark:$dir/data/$split/text ark:$new_dir/data/$split/text | cut -d" " -f2-) 
+done
+local/compute_am_score.sh --out_root am_res --out_name 57uer \
+  --mono_train $train_name --valid $valid_name --max_stage 1 $new_dir/data $dir/data/lang
+
+
