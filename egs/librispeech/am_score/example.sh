@@ -16,7 +16,8 @@ for split in $train_name $valid_name; do
   steps/compute_cmvn_stats.sh $dir/data/$split $dir/make_feat/$split $dir/feats/$split
 done
 local/compute_am_score.sh --out_root am_res --out_name gt \
-  --mono_train $train_name --valid $valid_name --max_stage 1 $dir/data $dir/data/lang
+  --mono_train $train_name --tri1_train $train_name --tri2b_train $train_name \
+  --valid $valid_name --max_stage 3 $dir/data $dir/data/lang
 
 
 # on-line part (pseudo transcript with 22% uer). LL = -1160.11

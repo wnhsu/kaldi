@@ -19,7 +19,7 @@ local/compute_am_score.sh --out_root am_res_de --out_name gt \
   --mono_train $train_name --valid $valid_name --max_stage 1 $dir/data $dir/data/lang
 
 
-# sanity check 1: shufft order. LL = -2530.35
+# sanity check 1: shuffle order. LL = -2530.35
 new_label_dir=/checkpoint/aconneau/asr/unsup_feat/de/unfiltered/precompute_unfiltered_pca512
 new_dir=./output/w2v_pca512_de_shuf
 
