@@ -12,7 +12,6 @@ exp_root=$1
 
 set -eu
 
-
 echo "==== WER w.r.t. pseudo transcript"
 for x in $exp_root/*/decode_${split}*; do grep WER $x/wer_* 2>/dev/null | utils/best_wer.sh; done
 
