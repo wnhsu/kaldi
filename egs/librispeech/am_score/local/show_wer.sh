@@ -3,6 +3,7 @@
 split="dev_other"
 ref_data=""
 get_best_wer=true
+dec_name="decode"
 
 . ./cmd.sh
 . ./path.sh
@@ -13,13 +14,13 @@ exp_root=$1
 set -eu
 
 echo "==== WER w.r.t. pseudo transcript"
-for x in $exp_root/*/decode_${split}*; do grep WER $x/wer_* 2>/dev/null | utils/best_wer.sh; done
+for x in $exp_root/*/${dec_name}_${split}*; do grep WER $x/wer_* 2>/dev/null | utils/best_wer.sh; done
 
 
 if [ ! -z $ref_data ]; then
   echo "==== WER w.r.t. real transcript (select based on pseudo WER)"
   ref_txt=$ref_data/$split/text
-  for x in $exp_root/*/decode_${split}*; do
+  for x in $exp_root/*/${dec_name}_${split}*; do
     lang=$(dirname $x)/graph
 
     lmwt=$(
@@ -36,7 +37,7 @@ fi
 if [ ! -z $ref_data ] && $get_best_wer; then
   echo "==== WER w.r.t. real transcript (select based on true WER)"
   ref_txt=$ref_data/$split/text
-  for x in $exp_root/*/decode_${split}*; do
+  for x in $exp_root/*/${dec_name}_${split}*; do
     lang=$(dirname $x)/graph
 
     for tra in $x/scoring/*.tra; do
