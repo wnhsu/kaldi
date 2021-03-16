@@ -87,3 +87,88 @@ local/show_wer.sh --ref_data output/w2v_pca128/data exp_train/22uer_960_2k_5k_-1
 # %WER 16.17 [ 29074 / 179810, 7362 ins, 13707 del, 8005 sub ] exp_train/22uer_960_2k_5k_-1_-1/tri2b/decode_dev_other/scoring/7.0.0.tra
 # %WER 16.53 [ 29724 / 179810, 7149 ins, 14349 del, 8226 sub ] exp_train/22uer_960_2k_5k_-1_-1/tri3b/decode_dev_other/scoring/7.0.0.tra
 # %WER 15.79 [ 28395 / 179810, 7055 ins, 13124 del, 8216 sub ] exp_train/22uer_960_2k_5k_-1_-1/tri3b/decode_dev_other.si/scoring/7.0.0.tra
+
+
+# train on 13% PER pseudo transcripts
+new_label_dir=/checkpoint/abaevski/asr/unsup/data/segmented/transcriptions/phncs_23.3/kaldi
+new_dir=./output/w2v_pca128_13uer
+label=txt
+for split in $train_name $valid_name; do
+  mkdir -p $new_dir/data/$split
+  cp $dir/data/$split/{feats.scp,cmvn.scp,utt2spk,spk2utt} $new_dir/data/$split
+  cut -d' ' -f1 $dir/data/$split/text > $new_dir/data/$split/uids
+  paste -d' ' $new_dir/data/$split/uids $new_label_dir/$split.$label > $new_dir/data/$split/text
+
+  echo "WER on $split is" $(compute-wer ark:$dir/data/$split/text ark:$new_dir/data/$split/text | cut -d" " -f2-)
+done
+
+
+exp_root=exp_train
+exp_name=13uer_960_2k_5k_-1_-1
+local/train_subset.sh --out_root $exp_root --out_name $exp_name \
+  --train $train_name --valid $valid_name \
+  --mono_size 2000 --tri1_size 5000 --tri2b_size -1 --tri3b_size -1 \
+  --stage 1 --max_stage 4 $new_dir/data $dir/data/lang $dir/data/lang_test
+local/show_wer.sh --ref_data $dir/data $exp_root/$exp_name
+# ==== WER w.r.t. pseudo transcript
+# %WER 20.75 [ 38551 / 185811, 7033 ins, 19065 del, 12453 sub ] exp_train/13uer_960_2k_5k_-1_-1/mono/decode_dev_other/wer_7_0.0
+# %WER 15.44 [ 28696 / 185811, 8182 ins, 11284 del, 9230 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri1/decode_dev_other/wer_17_0.5
+# %WER 12.17 [ 22619 / 185811, 5135 ins, 12330 del, 5154 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri2b/decode_dev_other/wer_7_0.0
+# %WER 12.44 [ 23106 / 185811, 4888 ins, 13049 del, 5169 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode_dev_other/wer_7_0.0
+# %WER 12.06 [ 22415 / 185811, 4955 ins, 12320 del, 5140 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode_dev_other.si/wer_7_0.0
+# ==== WER w.r.t. real transcript (select based on pseudo WER)
+# %WER 21.92 [ 39421 / 179810, 9664 ins, 15695 del, 14062 sub ] exp_train/13uer_960_2k_5k_-1_-1/mono/decode_dev_other/scoring/7.0.0.tra
+# %WER 15.68 [ 28201 / 179810, 10317 ins, 7418 del, 10466 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri1/decode_dev_other/scoring/17.0.5.tra
+# %WER 9.87 [ 17756 / 179810, 5218 ins, 6412 del, 6126 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri2b/decode_dev_other/scoring/7.0.0.tra
+# %WER 10.03 [ 18036 / 179810, 4894 ins, 7054 del, 6088 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode_dev_other/scoring/7.0.0.tra
+# %WER 9.76 [ 17543 / 179810, 5037 ins, 6401 del, 6105 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode_dev_other.si/scoring/7.0.0.tra
+# ==== WER w.r.t. real transcript (select based on true WER)
+# %WER 21.85 [ 39287 / 179810, 8677 ins, 16687 del, 13923 sub ] exp_train/13uer_960_2k_5k_-1_-1/mono/decode_dev_other/scoring/8.0.0.tra
+# %WER 15.43 [ 27744 / 179810, 9377 ins, 7947 del, 10420 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri1/decode_dev_other/scoring/17.1.0.tra
+# %WER 9.75 [ 17537 / 179810, 4198 ins, 7374 del, 5965 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri2b/decode_dev_other/scoring/7.0.5.tra
+# %WER 10.01 [ 17998 / 179810, 4030 ins, 8072 del, 5896 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode_dev_other/scoring/7.0.5.tra
+# %WER 9.62 [ 17297 / 179810, 4105 ins, 7272 del, 5920 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode_dev_other.si/scoring/7.0.5.tra
+
+
+lm_4gram=/checkpoint/abaevski/data/speech/libri/librispeech_lm_novox.phnc_o4.arpa
+exp_dir=$exp_root/$exp_name/tri3b
+decode_suffix=4g
+local/prepare_lm.sh --lmdir $dir/data/lang_test_4gram $lm_4gram $dir/data
+local/decode.sh --decode_suffix $decode_suffix --graph_name graph_4g --val_sets "train dev_other" $exp_dir $new_dir/data $dir/data/lang_test_4gram
+local/show_wer.sh --ref_data $dir/data --dec_name decode${decode_suffix} $exp_root/$exp_name
+# ==== WER w.r.t. pseudo transcript
+# %WER 11.27 [ 20948 / 185811, 5034 ins, 10988 del, 4926 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode4g_dev_other/wer_7_0.0
+# %WER 11.06 [ 20554 / 185811, 5039 ins, 10623 del, 4892 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode4g_dev_other.si/wer_7_0.0
+# ==== WER w.r.t. real transcript (select based on pseudo WER)
+# %WER 8.70 [ 15642 / 179810, 5069 ins, 5022 del, 5551 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode4g_dev_other/scoring/7.0.0.tra
+# %WER 8.61 [ 15480 / 179810, 5181 ins, 4764 del, 5535 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode4g_dev_other.si/scoring/7.0.0.tra
+# ==== WER w.r.t. real transcript (select based on true WER)
+# %WER 8.42 [ 15146 / 179810, 3349 ins, 6511 del, 5286 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode4g_dev_other/scoring/7.1.0.tra
+# %WER 8.15 [ 14653 / 179810, 3337 ins, 6014 del, 5302 sub ] exp_train/13uer_960_2k_5k_-1_-1/tri3b/decode4g_dev_other.si/scoring/7.1.0.tra
+
+
+# Align pseudo transcript used for training
+ali_dir=exp_align/w2v_pca128_13uer/tri3b/traintext
+local/write_ali_int.sh --splits "dev_other train" $exp_root/$exp_name/tri3b $new_dir/data $dir/data/lang_test $ali_dir
+
+
+# Align pseudo transcript decoded from the HMM system
+# for speaker-adapted systems, set si=true for speaker independent decoding
+lmparam=7.0.0
+si=true
+new_dir=./output/w2v_pca128_13uer_decode_$(basename $exp_dir)_${decode_suffix}_$(echo $lmparam | sed 's:\.:_:g')
+for split in $train_name $valid_name; do
+  mkdir -p $new_dir/data/$split
+  cp $dir/data/$split/{feats.scp,cmvn.scp,utt2spk,spk2utt} $new_dir/data/$split
+  
+  if $si; then
+    tra=$exp_dir/decode${decode_suffix}_${split}.si/scoring/${lmparam}.tra
+  else
+    tra=$exp_dir/decode${decode_suffix}_${split}/scoring/${lmparam}.tra
+  fi
+  cat $tra | utils/int2sym.pl -f 2- $dir/data/lang/words.txt | sed 's:\<UNK\>::g' > $new_dir/data/$split/text
+  echo "WER on $split is" $(compute-wer ark:$dir/data/$split/text ark:$new_dir/data/$split/text | cut -d" " -f2-)
+done
+
+ali_dir=exp_align/w2v_pca128_13uer/tri3b/decodetext_${decode_suffix}_$(echo $lmparam | sed 's:\.:_:g')
+local/write_ali_int.sh --splits "dev_other train" $exp_root/$exp_name/tri3b $new_dir/data $dir/data/lang_test $ali_dir
