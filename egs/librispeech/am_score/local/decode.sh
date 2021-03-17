@@ -27,3 +27,5 @@ for part in $val_sets; do
   $decode_script --nj 60 --cmd "$decode_cmd" \
     $graph $data_root/$part $exp_dir/decode${decode_suffix}_${part} &
 done
+
+wait

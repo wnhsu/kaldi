@@ -116,3 +116,5 @@ if [ $stage -le 4 ] && [ $max_stage -ge 4 ]; then
   steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
     $exp_root/tri3b/graph $data/$valid $exp_root/tri3b/decode_$valid &
 fi
+
+wait

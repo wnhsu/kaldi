@@ -4,6 +4,7 @@ split="dev_other"
 ref_data=""
 get_best_wer=true
 dec_name="decode"
+graph_name="graph"
 
 . ./cmd.sh
 . ./path.sh
@@ -21,7 +22,7 @@ if [ ! -z $ref_data ]; then
   echo "==== WER w.r.t. real transcript (select based on pseudo WER)"
   ref_txt=$ref_data/$split/text
   for x in $exp_root/*/${dec_name}_${split}*; do
-    lang=$(dirname $x)/graph
+    lang=$(dirname $x)/$graph_name
 
     lmwt=$(
       grep WER $x/wer_* 2>/dev/null | utils/best_wer.sh |
@@ -38,7 +39,7 @@ if [ ! -z $ref_data ] && $get_best_wer; then
   echo "==== WER w.r.t. real transcript (select based on true WER)"
   ref_txt=$ref_data/$split/text
   for x in $exp_root/*/${dec_name}_${split}*; do
-    lang=$(dirname $x)/graph
+    lang=$(dirname $x)/$graph_name
 
     for tra in $x/scoring/*.tra; do
       cat $tra | utils/int2sym.pl -f 2- $lang/words.txt | sed 's:\<UNK\>::g' | \

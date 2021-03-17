@@ -24,7 +24,11 @@ fi
 mkdir -p $lmdir
 cp -r $langdir/* $lmdir
 
-arpa2fst --disambig-symbol=#0 --read-symbol-table=$lmdir/words.txt $arpa_lm $lmdir/G.fst
+if [[ "$arpa_lm" == *.gz ]]; then
+  gunzip -c $arpa_lm | arpa2fst --disambig-symbol=#0 --read-symbol-table=$lmdir/words.txt - $lmdir/G.fst
+else
+  arpa2fst --disambig-symbol=#0 --read-symbol-table=$lmdir/words.txt $arpa_lm $lmdir/G.fst
+fi
 fstisstochastic $lmdir/G.fst
 utils/validate_lang.pl $lmdir || exit 1
 
