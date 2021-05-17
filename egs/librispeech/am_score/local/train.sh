@@ -5,19 +5,10 @@ out_name=train_${RANDOM}
 num_nonsil_states=1
 
 valid="dev_other"
-train="train"
-mono_size="-1"  # 2000
-tri1_size="-1"  # 5000
-tri2b_size="-1"  # 10000
-tri3b_size="-1"  # 10000
-
-# Acoustic model parameters
-numLeavesTri1=2000
-numGaussTri1=10000
-numLeavesMLLT=2500
-numGaussMLLT=15000
-numLeavesSAT=2500
-numGaussSAT=15000
+mono_train=train_2kshort
+tri1_train=train_5k
+tri2b_train=train_10k
+tri3b_train=train_10k
 
 stage=1
 max_stage=1
@@ -38,13 +29,6 @@ set -e
 
 if [ $stage -le 1 ] && [ $max_stage -ge 1 ]; then
   # train a monophone system
-  if [ ! $mono_size -eq -1 ]; then
-    utils/subset_data_dir.sh $data/$train $mono_size $data/${train}_${mono_size}
-    mono_train=${train}_${mono_size}
-  else
-    mono_train=${train}
-  fi
-
   steps/train_mono.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
     $data/$mono_train $lang $exp_root/mono
 
@@ -55,20 +39,13 @@ fi
 
 
 if [ $stage -le 2 ] && [ $max_stage -ge 2 ]; then
-  # train a first delta + delta-delta triphone system on a subset of 5000 utterances
-  if [ ! $tri1_size -eq -1 ]; then
-    utils/subset_data_dir.sh $data/$train $tri1_size $data/${train}_${tri1_size}
-    tri1_train=${train}_${tri1_size}
-  else
-    tri1_train=${train}
-  fi
-
   steps/align_si.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
     $data/$tri1_train $lang \
     $exp_root/mono $exp_root/mono_ali_${tri1_train}
 
+  # train a first delta + delta-delta triphone system on a subset of 5000 utterances
   steps_gan/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-      --num_nonsil_states $num_nonsil_states $numLeavesTri1 $numGaussTri1 \
+      --num_nonsil_states $num_nonsil_states 2000 10000 \
       $data/$tri1_train $lang \
       $exp_root/mono_ali_${tri1_train} $exp_root/tri1
 
@@ -77,22 +54,16 @@ if [ $stage -le 2 ] && [ $max_stage -ge 2 ]; then
     $exp_root/tri1/graph $data/$valid $exp_root/tri1/decode_$valid &
 fi
 
-if [ $stage -le 3 ] && [ $max_stage -ge 3 ]; then
-  # train an LDA+MLLT system.
-  if [ ! $tri2b_size -eq -1 ]; then
-    utils/subset_data_dir.sh $data/$train $tri2b_size $data/${train}_${tri2b_size}
-    tri2b_train=${train}_${tri2b_size}
-  else
-    tri2b_train=${train}
-  fi
 
+if [ $stage -le 3 ] && [ $max_stage -ge 3 ]; then
   steps/align_si.sh --nj 10 --cmd "$train_cmd" \
     $data/$tri2b_train $lang \
     $exp_root/tri1 $exp_root/tri1_ali_${tri2b_train}
 
+  # train an LDA+MLLT system.
   steps_gan/train_lda_mllt.sh --cmd "$train_cmd" \
       --num_nonsil_states $num_nonsil_states \
-      --splice-opts "--left-context=3 --right-context=3" $numLeavesMLLT $numGaussMLLT \
+      --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
       $data/$tri2b_train $lang \
       $exp_root/tri1_ali_${tri2b_train} $exp_root/tri2b
 
@@ -103,20 +74,13 @@ fi
 
 
 if [ $stage -le 4 ] && [ $max_stage -ge 4 ]; then
-  # Train tri3b, which is LDA+MLLT+SAT on 10k utts
-  if [ ! $tri3b_size -eq -1 ]; then
-    utils/subset_data_dir.sh $data/$train $tri3b_size $data/${train}_${tri3b_size}
-    tri3b_train=${train}_${tri3b_size}
-  else
-    tri3b_train=${train}
-  fi
-
   steps/align_si.sh  --nj 10 --cmd "$train_cmd" --use-graphs true \
     $data/$tri3b_train $lang \
     $exp_root/tri2b $exp_root/tri2b_ali_${tri2b_train}
 
+  # Train tri3b, which is LDA+MLLT+SAT on 10k utts
   steps_gan/train_sat.sh --cmd "$train_cmd" \
-    --num_nonsil_states $num_nonsil_states $numLeavesSAT $numGaussSAT \
+    --num_nonsil_states $num_nonsil_states 2500 15000 \
     $data/$tri3b_train $lang \
     $exp_root/tri2b_ali_${tri2b_train} $exp_root/tri3b
 
@@ -124,5 +88,3 @@ if [ $stage -le 4 ] && [ $max_stage -ge 4 ]; then
   steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
     $exp_root/tri3b/graph $data/$valid $exp_root/tri3b/decode_$valid &
 fi
-
-wait

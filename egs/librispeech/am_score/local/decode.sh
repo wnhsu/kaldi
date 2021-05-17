@@ -6,6 +6,8 @@ val_sets="dev_other"
 graph_name=graph
 decode_suffix=""
 decode_script="steps/decode_fmllr.sh"
+decode_args=""
+nj=60
 
 . ./cmd.sh
 . ./path.sh
@@ -24,7 +26,7 @@ fi
 
 for part in $val_sets; do
   echo "decoding $part for $exp_dir"
-  $decode_script --nj 60 --cmd "$decode_cmd" \
+  $decode_script --nj $nj --cmd "$decode_cmd" $decode_args \
     $graph $data_root/$part $exp_dir/decode${decode_suffix}_${part} &
 done
 

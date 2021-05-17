@@ -46,6 +46,7 @@ if [ $stage -le 1 ] && [ $max_stage -ge 1 ]; then
   fi
 
   steps/train_mono.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
+    --initial-beam 40 --regular-beam 60 --retry-beam 120 \
     $data/$mono_train $lang $exp_root/mono
 
   utils/mkgraph.sh $lang_test $exp_root/mono $exp_root/mono/graph

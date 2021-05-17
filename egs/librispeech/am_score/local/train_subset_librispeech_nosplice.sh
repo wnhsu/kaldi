@@ -6,10 +6,13 @@ num_nonsil_states=1
 
 valid="dev_other"
 train="train"
-mono_size="-1"  # 2000
-tri1_size="-1"  # 5000
-tri2b_size="-1"  # 10000
-tri3b_size="-1"  # 10000
+mono_size="2000"  # 2000
+tri1_size="5000"  # 5000
+tri2b_size="10000"  # 10000
+tri3b_size="10000"  # 10000
+tri4b_size="30000"  # 30000 (~train_clean_100)
+tri5b_size="150000"  # 150000 (~train_clean_460)
+tri6b_size="-1"
 
 # Acoustic model parameters
 numLeavesTri1=2000
@@ -18,6 +21,12 @@ numLeavesMLLT=2500
 numGaussMLLT=15000
 numLeavesSAT=2500
 numGaussSAT=15000
+numLeavesSAT2=4200
+numGaussSAT2=40000
+numLeavesSAT3=5000
+numGaussSAT3=100000
+numLeavesSAT4=7000
+numGaussSAT4=150000
 
 stage=1
 max_stage=1
@@ -92,7 +101,7 @@ if [ $stage -le 3 ] && [ $max_stage -ge 3 ]; then
 
   steps_gan/train_lda_mllt.sh --cmd "$train_cmd" \
       --num_nonsil_states $num_nonsil_states \
-      --splice-opts "--left-context=3 --right-context=3" $numLeavesMLLT $numGaussMLLT \
+      $numLeavesMLLT $numGaussMLLT \
       $data/$tri2b_train $lang \
       $exp_root/tri1_ali_${tri2b_train} $exp_root/tri2b
 
@@ -113,16 +122,89 @@ if [ $stage -le 4 ] && [ $max_stage -ge 4 ]; then
 
   steps/align_si.sh  --nj 10 --cmd "$train_cmd" --use-graphs true \
     $data/$tri3b_train $lang \
-    $exp_root/tri2b $exp_root/tri2b_ali_${tri2b_train}
+    $exp_root/tri2b $exp_root/tri2b_ali_${tri3b_train}
 
   steps_gan/train_sat.sh --cmd "$train_cmd" \
     --num_nonsil_states $num_nonsil_states $numLeavesSAT $numGaussSAT \
     $data/$tri3b_train $lang \
-    $exp_root/tri2b_ali_${tri2b_train} $exp_root/tri3b
+    $exp_root/tri2b_ali_${tri3b_train} $exp_root/tri3b
 
   utils/mkgraph.sh $lang_test $exp_root/tri3b $exp_root/tri3b/graph
   steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
     $exp_root/tri3b/graph $data/$valid $exp_root/tri3b/decode_$valid &
 fi
+
+
+if [ $stage -le 5 ] && [ $max_stage -ge 5 ]; then
+  # Train tri4b, which is LDA+MLLT+SAT on 30k utts
+  if [ ! $tri4b_size -eq -1 ]; then
+    utils/subset_data_dir.sh $data/$train $tri4b_size $data/${train}_${tri4b_size}
+    tri4b_train=${train}_${tri4b_size}
+  else
+    tri4b_train=${train}
+  fi
+
+  steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
+    $data/$tri4b_train $lang \
+    $exp_root/tri3b $exp_root/tri3b_ali_${tri4b_train}
+
+  steps_gan/train_sat.sh --cmd "$train_cmd" \
+    --num_nonsil_states $num_nonsil_states $numLeavesSAT2 $numGaussSAT2 \
+    $data/$tri4b_train $lang \
+    $exp_root/tri3b_ali_${tri4b_train} $exp_root/tri4b
+
+  utils/mkgraph.sh $lang_test $exp_root/tri4b $exp_root/tri4b/graph
+  steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+    $exp_root/tri4b/graph $data/$valid $exp_root/tri4b/decode_$valid &
+fi
+
+
+if [ $stage -le 6 ] && [ $max_stage -ge 6 ]; then
+  # Train tri5b, which is LDA+MLLT+SAT on 150k utts
+  if [ ! $tri5b_size -eq -1 ]; then
+    utils/subset_data_dir.sh $data/$train $tri5b_size $data/${train}_${tri5b_size}
+    tri5b_train=${train}_${tri5b_size}
+  else
+    tri5b_train=${train}
+  fi
+
+  steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
+    $data/$tri5b_train $lang \
+    $exp_root/tri4b $exp_root/tri4b_ali_${tri5b_train}
+
+  steps_gan/train_sat.sh --cmd "$train_cmd" \
+    --num_nonsil_states $num_nonsil_states $numLeavesSAT3 $numGaussSAT3 \
+    $data/$tri5b_train $lang \
+    $exp_root/tri4b_ali_${tri5b_train} $exp_root/tri5b
+
+  utils/mkgraph.sh $lang_test $exp_root/tri5b $exp_root/tri5b/graph
+  steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+    $exp_root/tri5b/graph $data/$valid $exp_root/tri5b/decode_$valid &
+fi
+
+
+if [ $stage -le 7 ] && [ $max_stage -ge 7 ]; then
+  # Train tri6b, which is LDA+MLLT+SAT on all utts
+  if [ ! $tri6b_size -eq -1 ]; then
+    utils/subset_data_dir.sh $data/$train $tri6b_size $data/${train}_${tri6b_size}
+    tri6b_train=${train}_${tri6b_size}
+  else
+    tri6b_train=${train}
+  fi
+
+  steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
+    $data/$tri6b_train $lang \
+    $exp_root/tri5b $exp_root/tri5b_ali_${tri6b_train}
+
+  steps_gan/train_sat.sh --cmd "$train_cmd" \
+    --num_nonsil_states $num_nonsil_states $numLeavesSAT4 $numGaussSAT4 \
+    $data/$tri6b_train $lang \
+    $exp_root/tri5b_ali_${tri6b_train} $exp_root/tri6b
+
+  utils/mkgraph.sh $lang_test $exp_root/tri6b $exp_root/tri6b/graph
+  steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+    $exp_root/tri6b/graph $data/$valid $exp_root/tri6b/decode_$valid &
+fi
+
 
 wait

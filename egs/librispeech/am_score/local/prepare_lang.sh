@@ -1,5 +1,6 @@
 #!/bin/bash
 
+sil_prob=0.5
 num_sil_states=3
 num_nonsil_states=1
 
@@ -31,6 +32,6 @@ echo "SIL" > $dict_dir/extra_questions.txt
 awk '{printf $1" "} END {printf "\n"}' $dict >> $dict_dir/extra_questions.txt
 
 # prepare lang
-utils/prepare_lang.sh --position-dependent-phones false \
+utils/prepare_lang.sh --sil-prob $sil_prob --position-dependent-phones false \
   --num_sil_states $num_sil_states --num_nonsil_states $num_nonsil_states \
   $dict_dir "<UNK>" $tmplm_dir $lm_dir
